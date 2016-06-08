@@ -1,4 +1,4 @@
-# Use sources:
+# Inspired by:
 # http://rpackages.ianhowson.com/bioc/EBImage/man/channel.html
 # http://earlglynn.github.io/RNotes/package/EBImage/Intro-to-EBImage.html
 # https://www.kaggle.com/chefele/ultrasound-nerve-segmentation/animated-images-with-outlined-nerve-area/code
