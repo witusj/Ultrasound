@@ -1,0 +1,122 @@
+---
+title: "Collect ultrasound image data into an array"
+author: "Witek ten Hove"
+date: "12 June 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Description
+
+Theses are examples of collecting data from a set of images and putting them into an array. In this case the images are in a folder called 'train' and consist of pairs: one ultrasound picture has one associated mask picture. There are two meythods for handling this: (A) building the array record by record (via the [abind](http://svitsrv25.epfl.ch/R-doc/library/abind/html/abind.html) package) or (B) preparing an empty array and replace the empty record with data. As we will discover the second method is more efficient.
+
+## Step A1: Create a function that takes a pair of images and puts them into an array.
+
+I used the [EBImage](http://earlglynn.github.io/RNotes/package/EBImage/Intro-to-EBImage.html) package to read the tiff images.
+
+```{r}
+library(EBImage)
+
+# Function to read pairs of tiff files, extract pixel matrices and create an array.
+# E.g. an_array[,,"mask", "1_3"] contains the pixel matrix of the 1_3_matrix.tif file.
+# Uses the 'EBImage' package.
+extractPix <- function(folder, image_name, extension) { 
+
+  ## Concatenate filepath from input variables and read images.  
+  filepath <- paste0(folder, "/", image_name, ".", extension)
+  filepath.m <- paste0(folder, "/", image_name, "_mask.", extension)
+  Image <- readImage(filepath)
+  Mask <- readImage(filepath.m)
+  
+  ## Extract pixel matrices from both images and combine them in one array.
+  (image_array <- array(
+    c(as.vector(Image@.Data), as.vector(Mask@.Data)),
+    dim = c(580, 420, 2, 1),
+    dimnames = list(
+      NULL,
+      NULL,
+      c("image", "mask"),
+      image_name
+    )
+  ))
+  
+ return(image_array)
+}
+```
+
+## Step A2: Loop through the files in the folder and add pixel data pairwise to the array.
+
+I used the [abind](http://svitsrv25.epfl.ch/R-doc/library/abind/html/abind.html) package to bind new arrays to the existing one.
+
+```{r}
+source("functions.R")
+library(abind)
+
+## Create vector with names of image files without the extension.
+scans <- list.files(path = "train", pattern = ".[0-9]+\\.tif")
+scans <- gsub("\\.tif", "", scans)
+
+## Use scans vector to loop through pairs of image and mask files
+## to extract pixel data and combine them in one array.
+ptm <- proc.time()
+arr <- extractPix("train", "1_1", "tif")
+
+for (i in scans[2:length(scans)]) {
+  new_arr <- extractPix("train", i, "tif")
+  arr <- abind(arr, new_arr)
+  
+}
+proc.time() - ptm
+
+```
+
+Finished! Now the pixel data of all the image files is stored in one array. If for instance we want to see the matrix belonging to the 1_4 image file (first 6 rows and 20 columns) we can call:
+
+```{r}
+head(arr[,c(1:20),"image","1_4"])
+```
+
+## Step B1: Prepare an empty array.
+
+First we generate a vector with all file names. This vector is used as one of name vectors of the array.
+
+```{r}
+## Create vector with names of image files without the extension.
+scans <- list.files(path = "train", pattern = ".[0-9]+\\.tif")
+scans <- gsub("\\.tif", "", scans)
+
+## Prepare an empty array
+ptm <- proc.time()
+image_array <- array(
+  c(numeric(580*420), numeric(580*420)),
+  dim = c(580, 420, 2, length(scans)),
+  dimnames = list(
+    NULL,
+    NULL,
+    c("image", "mask"),
+    scans
+  )
+)
+```
+
+## Step B2: Fill the empty array with data.
+
+We loop through the vector with image names and fill the array with data from the pixel matrices of both the image and the mask.
+
+```{r}
+for (i in scans[1:length(scans)]) {
+filepath <- paste0("train/", i, ".tif")
+filepath.m <- paste0("train/", i, "_mask.tif")
+Image <- readImage(filepath)
+Mask <- readImage(filepath.m)
+
+image_array[,,"image", i] <- as.vector(Image@.Data)
+image_array[,,"mask", i] <- as.vector(Mask@.Data)
+}
+proc.time() - ptm
+```
+
+The time stamps show that method B is much more efficient than A. This is expecially relevant when working with large image libraries.

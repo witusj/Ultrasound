@@ -1,0 +1,7 @@
+name: Publish Document
+account: rpubs
+server: rpubs.com
+appId: https://api.rpubs.com/api/v1/document/188751/671ffea063904ee48439733523534d07
+bundleId: https://api.rpubs.com/api/v1/document/188751/671ffea063904ee48439733523534d07
+url: http://rpubs.com/tweety/188751
+when: 1465853349.58236
